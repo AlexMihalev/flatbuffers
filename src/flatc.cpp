@@ -22,6 +22,36 @@
 
 namespace flatbuffers {
 
+	char easytolower(char in) {
+		if (in <= 'Z' && in >= 'A')
+			return in - ('Z' - 'z');
+		return in;
+	}
+
+	void HackNamespaces(const flatbuffers::Parser &parser)
+	{
+		for (auto& ns : parser.namespaces_)
+		{
+			// lowercase for java
+			if (parser.opts.lang == IDLOptions::kJava)
+			{
+				for (auto& comp : ns->components) {
+					std::transform(comp.begin(), comp.end(), comp.begin(), easytolower);
+				}
+			}
+
+			// prepend command line args
+			std::istringstream iss(parser.opts.namespace_);
+			std::string component;
+			auto it = ns->components.begin();
+
+			while (std::getline(iss, component, '.')) 
+			{
+				it = ns->components.insert(it, component) + 1;
+			}
+		}
+	}
+
 void FlatCompiler::ParseFile(
     flatbuffers::Parser &parser,
     const std::string &filename,
@@ -186,7 +216,10 @@ int FlatCompiler::Compile(int argc, const char** argv) {
       } else if(arg == "--go-namespace") {
         if (++argi >= argc) Error("missing golang namespace" + arg, true);
         opts.go_namespace = argv[argi];
-      } else if(arg == "--go-import") {
+	  } else if (arg == "--namespace") {
+		  if (++argi >= argc) Error("missing namespace" + arg, true);
+		  opts.namespace_ = argv[argi];
+	  } else if(arg == "--go-import") {
         if (++argi >= argc) Error("missing golang import" + arg, true);
         opts.go_import = argv[argi];
       } else if(arg == "--defaults-json") {
@@ -369,13 +402,23 @@ int FlatCompiler::Compile(int argc, const char** argv) {
       if (generator_enabled[i]) {
         if (!print_make_rules) {
           flatbuffers::EnsureDirExists(output_path);
-          if ((!params_.generators[i].schema_only || is_schema) &&
-              !params_.generators[i].generate(*parser.get(), output_path, filebase)) {
-            Error(std::string("Unable to generate ") +
-                  params_.generators[i].lang_name +
-                  " for " +
-                  filebase);
-          }
+
+		  if (!params_.generators[i].schema_only || is_schema)
+		  {
+			  // hack namespace here
+			  auto& prst = *parser.get();
+
+			  HackNamespaces(prst);
+
+			  if (!params_.generators[i].generate(prst, output_path, filebase))
+			  {
+				  Error(std::string("Unable to generate ") +
+					  params_.generators[i].lang_name +
+					  " for " +
+					  filebase);
+			  }
+		  }
+
         } else {
           std::string make_rule = params_.generators[i].make_rule(
               *parser.get(), output_path, filename);

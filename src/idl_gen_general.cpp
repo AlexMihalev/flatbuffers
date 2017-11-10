@@ -528,6 +528,11 @@ void GenEnum(EnumDef &enum_def, std::string *code_ptr) {
   // to map directly to how they're used in C/C++ and file formats.
   // That, and Java Enums are expensive, and not universally liked.
   GenComment(enum_def.doc_comment, code_ptr, &lang_.comment_config);
+  
+  if (lang_.language == IDLOptions::kCSharp && enum_def.attributes.Lookup("bit_flags")) {
+	  code += "[Flags]\n";
+  }
+
   code += std::string("public ") + lang_.enum_decl + enum_def.name;
   if (lang_.language == IDLOptions::kCSharp) {
     code += lang_.inheritance_marker +
@@ -826,7 +831,7 @@ void GenStruct(StructDef &struct_def, std::string *code_ptr) {
   if (!struct_def.fixed) {
     // Generate a special accessor for the table that when used as the root
     // of a FlatBuffer
-    std::string method_name = FunctionStart('G') + "etRootAs" + struct_def.name;
+	  std::string method_name = FunctionStart('A') + "sRoot"; // +struct_def.name;
     std::string method_signature = "  public static " + struct_def.name + " " +
                                    method_name;
 
@@ -1158,7 +1163,7 @@ void GenStruct(StructDef &struct_def, std::string *code_ptr) {
     // create a struct constructor function
     code += "  public static " + GenOffsetType(struct_def) + " ";
     code += FunctionStart('C') + "reate";
-    code += struct_def.name + "(FlatBufferBuilder builder";
+    code += /*struct_def.name +*/ "(FlatBufferBuilder builder";
     GenStructArgs(struct_def, code_ptr, "");
     code += ") {\n";
     GenStructBody(struct_def, code_ptr, "");
@@ -1182,11 +1187,11 @@ void GenStruct(StructDef &struct_def, std::string *code_ptr) {
         num_fields++;
       }
     }
-    if (has_no_struct_fields && num_fields) {
+    if (has_no_struct_fields/* && num_fields*/) {
       // Generate a table constructor of the form:
       // public static int createName(FlatBufferBuilder builder, args...)
       code += "  public static " + GenOffsetType(struct_def) + " ";
-      code += FunctionStart('C') + "reate" + struct_def.name;
+	  code += FunctionStart('C') + "reate"; // +struct_def.name;
       code += "(FlatBufferBuilder builder";
       for (auto it = struct_def.fields.vec.begin();
            it != struct_def.fields.vec.end(); ++it) {
@@ -1226,7 +1231,7 @@ void GenStruct(StructDef &struct_def, std::string *code_ptr) {
         }
       }
       code += "    return " + struct_def.name + ".";
-      code += FunctionStart('E') + "nd" + struct_def.name;
+	  code += FunctionStart('E') + "nd"; //!!! +struct_def.name;
       code += "(builder);\n  }\n\n";
     }
     // Generate a set of static methods that allow table construction,
@@ -1235,7 +1240,7 @@ void GenStruct(StructDef &struct_def, std::string *code_ptr) {
     // { builder.addShort(id, name, default); }
     // Unlike the Create function, these always work.
     code += "  public static void " + FunctionStart('S') + "tart";
-    code += struct_def.name;
+    //!!! code += struct_def.name;
     code += "(FlatBufferBuilder builder) { builder.";
     code += FunctionStart('S') + "tartObject(";
     code += NumToString(struct_def.fields.vec.size()) + "); }\n";
@@ -1305,7 +1310,7 @@ void GenStruct(StructDef &struct_def, std::string *code_ptr) {
       }
     }
     code += "  public static " + GenOffsetType(struct_def) + " ";
-    code += FunctionStart('E') + "nd" + struct_def.name;
+	code += FunctionStart('E') + "nd"; //!!! +struct_def.name;
     code += "(FlatBufferBuilder builder) {\n    int o = builder.";
     code += FunctionStart('E') + "ndObject();\n";
     for (auto it = struct_def.fields.vec.begin();
