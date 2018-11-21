@@ -152,6 +152,18 @@ public class FlatBufferBuilder {
          * @return Returns the new `ByteBuffer` that was allocated.
          */
         ByteBuffer newByteBuffer(int capacity);
+
+        /**
+         * Release a ByteBuffer. Current {@link FlatBufferBuilder}
+         * released any reference to it, so it is safe to dispose the buffer
+         * or return it to a pool.
+         * It is not guaranteed that the buffer has been created
+         * with {@link #newByteBuffer(int) }.
+         *
+         * @param bb the buffer to release
+         */
+        default void releaseByteBuffer(ByteBuffer bb) {
+        }
     }
 
     /**
@@ -196,7 +208,7 @@ public class FlatBufferBuilder {
         int old_buf_size = bb.capacity();
         if ((old_buf_size & 0xC0000000) != 0)  // Ensure we don't grow beyond what fits in an int.
             throw new AssertionError("FlatBuffers: cannot grow buffer beyond 2 gigabytes.");
-        int new_buf_size = old_buf_size << 1;
+        int new_buf_size = old_buf_size == 0 ? 1 : old_buf_size << 1;
         bb.position(0);
         ByteBuffer nbb = bb_factory.newByteBuffer(new_buf_size);
         nbb.position(new_buf_size - old_buf_size);
@@ -241,7 +253,11 @@ public class FlatBufferBuilder {
         // Reallocate the buffer if needed.
         while (space < align_size + size + additional_bytes) {
             int old_buf_size = bb.capacity();
-            bb = growByteBuffer(bb, bb_factory);
+            ByteBuffer old = bb;
+            bb = growByteBuffer(old, bb_factory);
+            if (old != bb) {
+                bb_factory.releaseByteBuffer(old);
+            }
             space += bb.capacity() - old_buf_size;
         }
         pad(align_size);
