@@ -88,7 +88,7 @@ const LanguageParameters &GetLangParams(IDLOptions::Language lang) {
         "",
         "import java.nio.*;\nimport java.lang.*;\nimport "
         "java.util.*;\nimport com.google.flatbuffers.*;\n",
-        "\n@SuppressWarnings(\"unused\")",
+        "\n@SuppressWarnings(\"unused\")\n",
         "\n@javax.annotation.Generated(value=\"flatc\")\n",
         {
             "/**",
@@ -510,6 +510,11 @@ class GeneralGenerator : public BaseGenerator {
     // to map directly to how they're used in C/C++ and file formats.
     // That, and Java Enums are expensive, and not universally liked.
     GenComment(enum_def.doc_comment, code_ptr, &lang_.comment_config);
+
+    if (lang_.language == IDLOptions::kCSharp && enum_def.attributes.Lookup("bit_flags")) {
+        code += "[Flags]\n";
+    }
+
     if (enum_def.attributes.Lookup("private")) {
       // For Java, we leave the enum unmarked to indicate package-private
       // For C# we mark the enum as internal
@@ -825,7 +830,7 @@ class GeneralGenerator : public BaseGenerator {
       // Generate a special accessor for the table that when used as the root
       // of a FlatBuffer
       std::string method_name =
-          FunctionStart('G') + "etRootAs" + struct_def.name;
+          FunctionStart('A') + "sRoot";
       std::string method_signature =
           "  public static " + struct_def.name + " " + method_name;
 
